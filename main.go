@@ -30,6 +30,7 @@ type SqsSubscription struct {
 	*Subscription
 	QueueName string
 	Endpoint  string
+	Raw       bool
 }
 
 type Config struct {
@@ -38,21 +39,23 @@ type Config struct {
 }
 
 func (s SqsSubscription) Publish(id string, msg string) error {
-	snsMessage := map[string]string{
-		"Type":      "Notification",
-		"MessageId": id,
-		"Message":   msg,
-		"Timestamp": time.Now().UTC().Format(time.RFC3339),
-		"TopicArn":  s.Topic,
+	if s.Raw {
+		messageBody := msg
+	} else {
+		snsMessage := map[string]string{
+			"Type":      "Notification",
+			"MessageId": id,
+			"Message":   msg,
+			"Timestamp": time.Now().UTC().Format(time.RFC3339),
+			"TopicArn":  s.Topic,
+		}
+
+		if snsMessageJSON, err := json.Marshal(snsMessage); err != nil {
+			return err
+		}
+
+		messageBody := string(snsMessageJSON)
 	}
-
-	snsMessageJson, err := json.Marshal(snsMessage)
-
-	if err != nil {
-		return err
-	}
-
-	messageBody := string(snsMessageJson)
 
 	fmt.Printf("Dispatching to: [%s] -> %s\n", s.QueueName, messageBody)
 
@@ -71,8 +74,8 @@ func (s SqsSubscription) Publish(id string, msg string) error {
 type SnsReply struct {
 	XMLName   xml.Name `xml:"PublishResponse"`
 	Namespace string   `xml:"xmlns,attr"`
-	MessageId string   `xml:"PublishResult>MessageId"`
-	RequestId string   `xml:"ResponseMetadata>ResponseMetadata"`
+	MessageID string   `xml:"PublishResult>MessageId"`
+	RequestID string   `xml:"ResponseMetadata>ResponseMetadata"`
 }
 
 func pseudo_uuid() (uuid string) {
@@ -81,20 +84,20 @@ func pseudo_uuid() (uuid string) {
 	if err != nil {
 		return
 	}
-    uuid = strings.ToLower(
-        fmt.Sprintf("%X-%X-%X-%X-%X",
-        b[0:4], b[4:6], b[6:8], b[8:10], b[10:]))
+	uuid = strings.ToLower(
+		fmt.Sprintf("%X-%X-%X-%X-%X",
+			b[0:4], b[4:6], b[6:8], b[8:10], b[10:]))
 	return
 }
 
 func main() {
-    configPath := flag.String("config", "./config.json", "path to config file")
-    flag.Parse()
+	configPath := flag.String("config", "./config.json", "path to config file")
+	flag.Parse()
 
 	file, err := ioutil.ReadFile(*configPath)
 
 	if err != nil {
-        fmt.Printf("Error reading config: %s", err)
+		fmt.Printf("Error reading config: %s", err)
 		return
 	}
 
@@ -113,31 +116,31 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-            http.Error(w, "Something went wrong reading request body", 500)
-            return
+			http.Error(w, "Something went wrong reading request body", 500)
+			return
 		}
 
 		values, err := url.ParseQuery(string(body))
 
-        if err != nil {
-            http.Error(w, "Can't parse request body", 400)
-            return
-        }
-
-		if values["Action"][0] != "Publish" {
-            http.Error(w, "I can only handle Publish action", 400)
+		if err != nil {
+			http.Error(w, "Can't parse request body", 400)
 			return
 		}
-		messageId := pseudo_uuid()
+
+		if values["Action"][0] != "Publish" {
+			http.Error(w, "I can only handle Publish action", 400)
+			return
+		}
+		messageID := pseudo_uuid()
 
 		for _, s := range config.Subscriptions {
 			if s.Topic == values["TopicArn"][0] {
-				s.Publish(messageId, values["Message"][0])
+				s.Publish(messageID, values["Message"][0])
 			}
 		}
 
 		reply, _ := xml.Marshal(&SnsReply{
-			MessageId: messageId,
+			MessageID: messageID,
 			RequestId: pseudo_uuid(),
 			Namespace: "http://sns.amazonaws.com/doc/2010-03-31/",
 		})

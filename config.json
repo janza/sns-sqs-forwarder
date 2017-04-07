@@ -5,7 +5,8 @@
             "Type": "sqs",
             "Topic": "my-topic",
             "Endpoint": "http://10.250.250.250:9324",
-            "QueueName": "my-queue"
+            "QueueName": "my-queue",
+            "Raw": true
         },
         {
             "Type": "sqs",
