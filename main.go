@@ -39,8 +39,9 @@ type Config struct {
 }
 
 func (s SqsSubscription) Publish(id string, msg string) error {
+	var messageBody string
 	if s.Raw {
-		messageBody := msg
+		messageBody = msg
 	} else {
 		snsMessage := map[string]string{
 			"Type":      "Notification",
@@ -50,11 +51,11 @@ func (s SqsSubscription) Publish(id string, msg string) error {
 			"TopicArn":  s.Topic,
 		}
 
-		if snsMessageJSON, err := json.Marshal(snsMessage); err != nil {
+		snsMessageJSON, err := json.Marshal(snsMessage)
+		if err != nil {
 			return err
 		}
-
-		messageBody := string(snsMessageJSON)
+		messageBody = string(snsMessageJSON)
 	}
 
 	fmt.Printf("Dispatching to: [%s] -> %s\n", s.QueueName, messageBody)
@@ -141,7 +142,7 @@ func main() {
 
 		reply, _ := xml.Marshal(&SnsReply{
 			MessageID: messageID,
-			RequestId: pseudo_uuid(),
+			RequestID: pseudo_uuid(),
 			Namespace: "http://sns.amazonaws.com/doc/2010-03-31/",
 		})
 
