@@ -98,7 +98,7 @@ func main() {
 	file, err := ioutil.ReadFile(*configPath)
 
 	if err != nil {
-		fmt.Printf("Error reading config: %s", err)
+		fmt.Printf("Error reading config: %s\n", err)
 		return
 	}
 
@@ -106,7 +106,7 @@ func main() {
 	err = json.Unmarshal(file, &config)
 
 	if err != nil {
-		fmt.Printf("Error parsing config.json: %s", err)
+		fmt.Printf("Error parsing config.json: %s\n", err)
 		return
 	}
 
@@ -118,6 +118,7 @@ func main() {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "Something went wrong reading request body", 500)
+			fmt.Printf("Something went wrong reading request body: %s\n", err)
 			return
 		}
 
@@ -125,11 +126,13 @@ func main() {
 
 		if err != nil {
 			http.Error(w, "Can't parse request body", 400)
+			fmt.Printf("Can't parse request body: %s\n", err)
 			return
 		}
 
 		if values["Action"][0] != "Publish" {
 			http.Error(w, "I can only handle Publish action", 400)
+			fmt.Printf("I can only handle Publish action: %s\n", err)
 			return
 		}
 		messageID := pseudo_uuid()
