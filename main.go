@@ -17,10 +17,6 @@ type Publisher interface {
 	Publish(msg string) error
 }
 
-func Publish(p Publisher, msg string) error {
-	return p.Publish(msg)
-}
-
 type Subscription struct {
 	Type  string
 	Topic string
@@ -92,18 +88,7 @@ func pseudo_uuid() (uuid string) {
 }
 
 func main() {
-	configPath := flag.String("config", "./config.json", "path to config file")
-	flag.Parse()
-
-	file, err := ioutil.ReadFile(*configPath)
-
-	if err != nil {
-		fmt.Printf("Error reading config: %s\n", err)
-		return
-	}
-
-	var config Config
-	err = json.Unmarshal(file, &config)
+	config, err := getConfig()
 
 	if err != nil {
 		fmt.Printf("Error parsing config.json: %s\n", err)
@@ -153,4 +138,24 @@ func main() {
 	})
 
 	http.ListenAndServe(":"+config.Port, nil)
+}
+
+func getConfig() (Config, error) {
+	configPath := flag.String("config", "./config.json", "path to config file")
+	flag.Parse()
+
+	file, err := ioutil.ReadFile(*configPath)
+
+	if err != nil {
+		return Config{}, err
+	}
+
+	var config Config
+	err = json.Unmarshal(file, &config)
+
+	if err != nil {
+		return Config{}, nil
+	}
+
+	return config, nil
 }
