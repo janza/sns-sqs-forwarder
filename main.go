@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"encoding/xml"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -17,21 +16,11 @@ type Publisher interface {
 	Publish(msg string) error
 }
 
-type Subscription struct {
-	Type  string
-	Topic string
-}
-
 type SqsSubscription struct {
 	*Subscription
 	QueueName string
 	Endpoint  string
 	Raw       bool
-}
-
-type Config struct {
-	Subscriptions []SqsSubscription
-	Port          string
 }
 
 func (s SqsSubscription) Publish(id string, msg string) error {
@@ -75,7 +64,7 @@ type SnsReply struct {
 	RequestID string   `xml:"ResponseMetadata>ResponseMetadata"`
 }
 
-func pseudo_uuid() (uuid string) {
+func pseudoUUID() (uuid string) {
 	b := make([]byte, 16)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -120,7 +109,8 @@ func main() {
 			fmt.Printf("I can only handle Publish action: %s\n", err)
 			return
 		}
-		messageID := pseudo_uuid()
+
+		messageID := pseudoUUID()
 
 		for _, s := range config.Subscriptions {
 			if s.Topic == values["TopicArn"][0] {
@@ -130,7 +120,7 @@ func main() {
 
 		reply, _ := xml.Marshal(&SnsReply{
 			MessageID: messageID,
-			RequestID: pseudo_uuid(),
+			RequestID: pseudoUUID(),
 			Namespace: "http://sns.amazonaws.com/doc/2010-03-31/",
 		})
 
@@ -138,24 +128,4 @@ func main() {
 	})
 
 	http.ListenAndServe(":"+config.Port, nil)
-}
-
-func getConfig() (Config, error) {
-	configPath := flag.String("config", "./config.json", "path to config file")
-	flag.Parse()
-
-	file, err := ioutil.ReadFile(*configPath)
-
-	if err != nil {
-		return Config{}, err
-	}
-
-	var config Config
-	err = json.Unmarshal(file, &config)
-
-	if err != nil {
-		return Config{}, nil
-	}
-
-	return config, nil
 }
