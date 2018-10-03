@@ -138,7 +138,7 @@ func main() {
 		messageID := pseudo_uuid()
 
 		for _, s := range config.Subscriptions {
-			if s.Topic == values["TopicArn"][0] {
+			if s.Topic == values["TopicArn"][0] || s.Topic == "*" {
 				s.Publish(messageID, values["Message"][0])
 			}
 		}
