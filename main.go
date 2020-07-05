@@ -39,6 +39,15 @@ type Config struct {
 }
 
 func (s SqsSubscription) Publish(id string, msg string) error {
+	if s.Type == "http" {
+		fmt.Printf("Dispatching to http: [%s] -> %s\n", s.Endpoint, msg)
+		_, err := http.Post(
+			fmt.Sprintf("%s", s.Endpoint),
+			"application/json",
+			strings.NewReader(msg),
+		)
+		return err
+	}
 	var messageBody string
 	if s.Raw {
 		messageBody = msg
@@ -138,7 +147,7 @@ func main() {
 		messageID := pseudo_uuid()
 
 		for _, s := range config.Subscriptions {
-			if s.Topic == values["TopicArn"][0] || s.Topic == "*" {
+			if len(values["TopicArn"]) > 0 && s.Topic == values["TopicArn"][0] || s.Topic == "*" {
 				s.Publish(messageID, values["Message"][0])
 			}
 		}
@@ -152,5 +161,6 @@ func main() {
 		fmt.Fprintf(w, "%s", string(reply))
 	})
 
+	fmt.Printf("Will start listening on: :%s\n", config.Port)
 	http.ListenAndServe(":"+config.Port, nil)
 }
